@@ -16,7 +16,7 @@
   .btn { padding: .3rem .6rem; border: 1px solid #444; border-radius: 6px; background: #1b1b1b; } .btn:hover { text-decoration: none; background: #2a2a2a; }
   .yt { font-size: 12px; font-weight: normal; margin-left: .3rem; }
   .chan { font-size: 1rem; font-weight: 600; color: #fff; } .right { margin-left: auto; }
-  select[name=channel] { max-width: 260px; }
+  #chq { width: 300px; margin-left: .3rem; padding: .35rem .5rem; border-radius: 6px; border: 1px solid #444; background: #1b1b1b; color: #ddd; font: inherit; }
   select { margin-left: .3rem; padding: .35rem .5rem; border-radius: 6px; border: 1px solid #444; background: #1b1b1b; color: #ddd; font: inherit; }
   #list { position: relative; } .count { font-size: 13px; } .count b { color: #ddd; }
   .line { position: absolute; left: 0; right: 0; height: 96px; display: grid; column-gap: 1.5rem; }
@@ -59,7 +59,9 @@
   <form>
     <input type="hidden" name="show">
     <label>Sort<select name="sort" onchange="this.form.submit()"></select></label>
-    <label>Channel<select name="channel" onchange="this.form.submit()"></select></label>
+    <input type="hidden" name="channel">
+    <label>Channel<input id="chq" list="chlist" autocomplete="off" title="Type a channel name or @handle, then pick it"></label>
+    <datalist id="chlist"></datalist>
     <a class="btn" id="prev" title="Previous channel">◀</a>
     <a class="btn" id="next" title="Next channel">▶</a>
     <label>Group<select name="group" onchange="this.form.submit()">
@@ -211,8 +213,19 @@ async function start() {
   const f = document.querySelector('form');
   f.show.value = SHOW;
   f.sort.innerHTML = Object.entries(SORTS).map(([k, [label]]) => `<option value="${k}"${k === SORT ? ' selected' : ''}>${label}</option>`).join('');
-  f.channel.innerHTML = `<option value="">All channels (${listed.length})</option>` + listed.map(c =>
-    `<option value="${esc(c.url)}"${c === chan ? ' selected' : ''}>${esc(c.name)} (${num(c.views)} views, ${num(c.likes)} likes, ${num(c.comments)} comments)</option>`).join('');
+  // Channel search: type a name or @handle, pick from the list. Clear it for all channels.
+  const label = (c) => `${c.name} ${c.list[0].handle || ''} · ${num(c.views)} views, ${num(c.likes)} likes, ${num(c.comments)} comments`;
+  const byLabel = new Map(listed.map(c => [label(c), c.url]));
+  f.channel.value = chan?.url || '';
+  document.getElementById('chlist').innerHTML = [...byLabel.keys()].map(l => `<option value="${esc(l)}">`).join('');
+  const chq = document.getElementById('chq');
+  chq.placeholder = `All channels (${listed.length}) · type to search`;
+  chq.value = chan ? label(chan) : '';
+  chq.onchange = () => {
+    const url = chq.value.trim() ? byLabel.get(chq.value) : '';
+    if (url !== undefined && url !== (chan?.url || '')) location.href = link({ channel: url });
+  };
+  chq.onfocus = () => chq.select();
   f.group.value = GROUP ? 'channel' : 'none';
   const i = listed.indexOf(chan), go = (d) => link({ channel: listed[i < 0 ? (d > 0 ? 0 : listed.length - 1) : (i + d + listed.length) % listed.length]?.url || '' });
   document.getElementById('prev').href = go(-1); document.getElementById('next').href = go(1);

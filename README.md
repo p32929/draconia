@@ -18,10 +18,6 @@ So I made one page with all of them. It shows every video with its numbers, lets
 
 ![One channel's videos, newest first](docs/screenshots/channel.png)
 
-**Pick a channel by its numbers.** Each channel shows the total views, likes and comments of its videos:
-
-![The channel list with total views, likes and comments](docs/screenshots/channels-list.png)
-
 **Keep track of what you watched.** Watched videos turn green, and the top shows hours watched and hours left:
 
 ![Three videos marked as watched](docs/screenshots/watched.png)
@@ -41,7 +37,7 @@ So I made one page with all of them. It shows every video with its numbers, lets
 1. **About 4,700 videos from 464 channels**, each with thumbnail, length, upload date, views, likes, comments and like rate.
 2. **Sort** by most views, most likes, best like rate, most comments, newest, oldest, shortest, longest or biggest channel.
 3. **Tabs:** All, Not watched, Watched and Hidden, each with a count.
-4. **One channel at a time:** pick it from the list (with its total views, likes and comments) or click any channel name. ◀ ▶ go to the previous or next channel.
+4. **One channel at a time:** type a channel name or @handle in the Channel box and pick it (each shows its total views, likes and comments), or click any channel name. ◀ ▶ go to the previous or next channel.
 5. **Group by channel**, in the order of the sort you picked.
 6. **Watch time:** total hours, hours watched and hours left for whatever you are looking at.
 7. **Hide a channel** you don't want, or **✕** a single video that is not about Draconia. Both can be undone from the Hidden tab.

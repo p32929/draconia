@@ -1,0 +1,258 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Draconia</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Works two ways: served by server.js (watched list + Refresh stats on the server),
+     or as a plain static page like GitHub Pages (watched list kept in this browser). -->
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 1rem 0; padding: 0 1rem; background: #111; color: #ddd; }
+  a { color: inherit; text-decoration: none; } a:hover { text-decoration: underline; }
+  header, .bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-bottom: .6rem; }
+  h1 { font-size: 1.3rem; margin: 0; } .sub { color: #888; font-size: 12px; }
+  .tabs { display: flex; border: 1px solid #444; border-radius: 8px; overflow: hidden; }
+  .tabs a { padding: .4rem .8rem; color: #aaa; } .tabs a:hover { text-decoration: none; background: #222; }
+  .tabs a.on { background: #ddd; color: #111; font-weight: 600; }
+  label { color: #888; font-size: 13px; }
+  form { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+  .btn { padding: .3rem .6rem; border: 1px solid #444; border-radius: 6px; background: #1b1b1b; } .btn:hover { text-decoration: none; background: #2a2a2a; }
+  .yt { font-size: 12px; font-weight: normal; margin-left: .3rem; }
+  .chan { font-size: 1rem; font-weight: 600; color: #fff; } .right { margin-left: auto; }
+  select[name=channel] { max-width: 260px; }
+  select { margin-left: .3rem; padding: .35rem .5rem; border-radius: 6px; border: 1px solid #444; background: #1b1b1b; color: #ddd; font: inherit; }
+  #list { position: relative; } .count { font-size: 13px; } .count b { color: #ddd; }
+  .line { position: absolute; left: 0; right: 0; height: 96px; display: grid; column-gap: 1.5rem; }
+  .line.head { height: 46px; align-items: end; }
+  h2 { font-size: 1rem; margin: 0 0 .2rem; padding-bottom: .3rem; border-bottom: 1px solid #333; color: #fff; }
+  .row { min-width: 0; height: 96px; box-sizing: border-box; display: flex; gap: .75rem; align-items: center; padding: .4rem; border-bottom: 1px solid #222; }
+  .row.done { opacity: .55; }
+  .n { width: 1.6rem; text-align: right; color: #666; font-size: 12px; }
+  .th { position: relative; flex: none; }
+  .th img { width: 144px; height: 81px; object-fit: cover; border-radius: 6px; display: block; background: #222; }
+  .th b { position: absolute; right: 4px; bottom: 4px; background: #000c; color: #fff; font-size: 11px; padding: 1px 4px; border-radius: 3px; }
+  .info { flex: 1; min-width: 0; }
+  .t { font-weight: 600; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m { color: #999; font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .s { margin-right: .9rem; cursor: help; } .s em { color: #4caf50; font-style: normal; margin-left: 3px; }
+  .as { color: #666; } .err { color: #e57373; }
+  button { flex: none; padding: .45rem .8rem; cursor: pointer; border-radius: 6px; border: 1px solid #555; background: #222; color: #ddd; }
+  button.x { padding: .45rem .55rem; margin-left: -.4rem; color: #888; } button.x:hover { color: #e57373; border-color: #e57373; }
+  button.hide { padding: .1rem .45rem; font-size: 11px; margin-left: .4rem; color: #aaa; }
+  .done > button { background: #2e7d32; color: #fff; border-color: #2e7d32; }
+  @media (max-width: 600px) { /* phones: smaller thumbnail and buttons so the title still fits */
+    body { padding: 0 .5rem; }
+    .n { display: none; }
+    .row { gap: .5rem; padding: .4rem 0; }
+    .th img { width: 104px; height: 58px; }
+    .row > button { padding: .3rem .4rem; font-size: 11px; }
+    .row > button:not(.x) { width: 62px; white-space: normal; line-height: 1.2; }
+    button.x { margin-left: -.3rem; }
+    .s { margin-right: .5rem; } .as { display: none; }
+  }
+</style></head><body>
+<header>
+  <h1><a href="./">Draconia</a> <small id="count"></small></h1>
+  <span id="chan"></span>
+  <span class="sub count" id="stats">Loading…</span>
+  <span class="right sub" id="updated"></span>
+</header>
+<div class="bar">
+  <nav class="tabs" id="tabs"></nav>
+  <form>
+    <input type="hidden" name="show">
+    <label>Sort<select name="sort" onchange="this.form.submit()"></select></label>
+    <label>Channel<select name="channel" onchange="this.form.submit()"></select></label>
+    <a class="btn" id="prev" title="Previous channel">◀</a>
+    <a class="btn" id="next" title="Next channel">▶</a>
+    <label>Group<select name="group" onchange="this.form.submit()">
+      <option value="none">No grouping</option><option value="channel">By channel</option></select></label>
+  </form>
+</div>
+<div id="list"></div><p class="sub" id="empty" hidden>Nothing here.</p>
+<script>
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (n) => n == null ? '–' : Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+const day = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+function ago(d) {
+  if (!d || d.length < 10) return '';
+  const s = (Date.now() - new Date(d)) / 1000;
+  for (const [u, n] of [['y', 31536000], ['mo', 2592000], ['d', 86400], ['h', 3600], ['m', 60]]) if (s >= n) return Math.floor(s / n) + u + ' ago';
+  return 'just now';
+}
+function stat(icon, label, key, h) {
+  const last = h.at(-1), prev = h.at(-2);
+  const diff = prev && last[key] != null && prev[key] != null ? last[key] - prev[key] : 0;
+  const tip = h.map(x => `${day(x.date)}: ${x[key] ?? '–'}`).join('\n');
+  return `<span class="s" title="${label}\n${esc(tip)}">${icon} ${num(last?.[key])}${diff ? `<em>+${num(diff)}</em>` : ''}</span>`;
+}
+const secs = (d) => d ? d.split(':').reduce((t, x) => t * 60 + +x, 0) : null;
+const likeRate = (v) => { const l = v.history?.at(-1); return l?.views && l.likes != null ? l.likes / l.views : null; };
+
+// [label, value(video), direction]  1 = biggest first, -1 = smallest first. Missing values always go last.
+const SORTS = {
+  views: ['Most views', v => v.history?.at(-1)?.views, 1],
+  likes: ['Most likes', v => v.history?.at(-1)?.likes, 1],
+  likerate: ['Best like rate (likes ÷ views)', likeRate, 1],
+  comments: ['Most comments', v => v.history?.at(-1)?.comments, 1],
+  newest: ['Newest first', v => v.uploaded && +new Date(v.uploaded), 1],
+  oldest: ['Oldest first', v => v.uploaded && +new Date(v.uploaded), -1],
+  shortest: ['Shortest first', v => secs(v.duration), -1],
+  longest: ['Longest first', v => secs(v.duration), 1],
+  subs: ['Biggest channel', v => v.subscribers, 1],
+};
+const SHOWS = { all: 'All', unwatched: 'Not watched', watched: 'Watched', hidden: 'Hidden' };
+
+const Q = new URLSearchParams(location.search);
+const SORT = SORTS[Q.get('sort')] ? Q.get('sort') : 'views';
+const SHOW = SHOWS[Q.get('show')] ? Q.get('show') : 'all';
+const GROUP = Q.get('group') === 'channel', HIDDENTAB = SHOW === 'hidden';
+const link = (changes) => '?' + new URLSearchParams({ sort: SORT, show: SHOW, group: GROUP ? 'channel' : 'none', channel: Q.get('channel') || '', ...changes });
+
+// Hidden channels and crossed-out videos: this browser only. Watched: on the server if there is one, else this browser.
+const store = (k) => JSON.parse(localStorage.getItem(k) || '{}');
+const HID = store('hiddenChannels'), REMOVED = store('removedVideos');
+const save = () => { localStorage.setItem('hiddenChannels', JSON.stringify(HID)); localStorage.setItem('removedVideos', JSON.stringify(REMOVED)); };
+const off = (v) => HID[v.channelUrl] || REMOVED[v.id];
+let SERVER = false, WATCHED = {}, SCOPE = [], VIDS = [], SHOWCHAN = true;
+
+const hideBtn = (url, isHidden) => url ? `<button class="hide" onclick="hideChannel('${esc(url)}')">${isHidden ? 'Unhide channel' : 'Hide channel'}</button>` : '';
+const chanHref = (url) => { const q = new URLSearchParams(location.search); q.set('channel', url); return '?' + q; };
+function row(v, i) {
+  const h = v.history || [], last = h.at(-1), lr = likeRate(v);
+  return `
+  <div class="row${WATCHED[v.id] ? ' done' : ''}">
+    <span class="n">${i + 1}</span>
+    <a class="th" href="https://www.youtube.com/watch?v=${v.id}" target="_blank">
+      <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt="">${v.duration ? `<b>${esc(v.duration)}</b>` : ''}
+    </a>
+    <div class="info">
+      <a class="t" href="https://www.youtube.com/watch?v=${v.id}" target="_blank" title="${esc(v.title)}">${esc(v.title || v.id)}</a>
+      ${SHOWCHAN ? `<div class="m">${v.channel ? `<a href="${esc(chanHref(v.channelUrl))}">${esc(v.channel)}</a> · ${num(v.subscribers)} subs ${hideBtn(v.channelUrl, HIDDENTAB && HID[v.channelUrl])}` : ''}</div>` : ''}
+      <div class="m">${v.uploaded ? `<span title="${esc(v.uploaded)}">${day(v.uploaded)} (${ago(v.uploaded)})</span>` : ''}${lr != null ? ` · ${(lr * 100).toFixed(1)}% liked` : ''}${v.error ? `<span class="err">${esc(v.error)}</span>` : ''}</div>
+      <div class="m">${stat('👁', 'Views', 'views', h)}${stat('👍', 'Likes', 'likes', h)}${stat('💬', 'Comments', 'comments', h)}${last ? `<span class="as">as of ${day(last.date)}</span>` : ''}</div>
+    </div>
+    <button onclick="toggle('${v.id}')">${WATCHED[v.id] ? '✓ Watched' : 'Mark watched'}</button>
+    <button class="x" onclick="removeVideo('${v.id}')" title="${REMOVED[v.id] ? 'Put back in the list' : 'Not related: remove from the list'}">${REMOVED[v.id] ? '↺' : '✕'}</button>
+  </div>`;
+}
+
+// Virtual list: only the lines near the screen exist in the page; the rest is empty space of the right height.
+const ROW = 96, HEAD = 46, box = document.getElementById('list');
+let lines = [], tops = [], cols = 1, drawn = '';
+function build() {
+  cols = innerWidth >= 1100 ? 2 : 1;
+  lines = [];
+  const push = (list) => { for (let i = 0; i < list.length; i += cols) lines.push({ vids: list.slice(i, i + cols), start: i }); };
+  if (GROUP) for (const list of Map.groupBy(VIDS, v => v.channelUrl || '').values()) { lines.push({ head: list[0], n: list.length }); push(list); }
+  else push(VIDS);
+  let y = 0; tops = lines.map(l => { const t = y; y += l.head ? HEAD : ROW; return t; });
+  box.style.height = y + 'px'; drawn = ''; draw(); stats(); counts();
+}
+function draw() {
+  const y0 = scrollY - box.offsetTop - 800, y1 = y0 + innerHeight + 1600;
+  let a = 0, hi = lines.length;
+  while (a < hi) { const m = (a + hi) >> 1; if (tops[m] + ROW < y0) a = m + 1; else hi = m; }
+  let b = a; while (b < lines.length && tops[b] < y1) b++;
+  if (drawn === a + ':' + b) return;
+  drawn = a + ':' + b;
+  box.innerHTML = lines.slice(a, b).map((l, k) => {
+    const c = l.head;
+    const inner = c
+      ? `<h2>${c.channel ? `<a href="${esc(chanHref(c.channelUrl))}">${esc(c.channel)}</a> <span class="sub">${esc(c.handle || '')} · ${num(c.subscribers)} subs · ${l.n} video${l.n > 1 ? 's' : ''}</span> ${hideBtn(c.channelUrl, HIDDENTAB && HID[c.channelUrl])}` : 'Unknown channel'}</h2>`
+      : l.vids.map((v, j) => row(v, l.start + j)).join('');
+    return `<div class="line${c ? ' head' : ''}" style="top:${tops[a + k]}px;grid-template-columns:repeat(${c ? 1 : cols},minmax(0,1fr))">${inner}</div>`;
+  }).join('');
+}
+// Watch time of the videos in this view: total, watched, remaining.
+function stats() {
+  const hm = (t) => `${Math.floor(t / 3600)}h ${Math.floor(t % 3600 / 60)}m`;
+  let all = 0, seen = 0, nSeen = 0, noLen = 0;
+  for (const v of VIDS) {
+    const t = secs(v.duration);
+    if (t == null) noLen++;
+    all += t || 0;
+    if (WATCHED[v.id]) { seen += t || 0; nSeen++; }
+  }
+  const el = document.getElementById('stats');
+  el.innerHTML = `${VIDS.length} video${VIDS.length === 1 ? '' : 's'} · <b>${hm(all)}</b>`
+    + ` · watched <b>${hm(seen)}</b> (${nSeen}) · remaining <b>${hm(all - seen)}</b> (${VIDS.length - nSeen})`;
+  el.title = noLen ? `${noLen} video${noLen === 1 ? ' has' : 's have'} no length and are not counted` : '';
+}
+// Tab counts and the watched count.
+function counts() {
+  const vis = SCOPE.filter(v => !off(v)), seen = vis.filter(v => WATCHED[v.id]).length;
+  const n = { all: vis.length, watched: seen, unwatched: vis.length - seen, hidden: SCOPE.length - vis.length };
+  document.getElementById('tabs').innerHTML = Object.entries(SHOWS).map(([k, label]) =>
+    `<a href="${link({ show: k })}" class="${k === SHOW ? 'on' : ''}">${label} (${n[k]})</a>`).join('');
+  document.getElementById('count').textContent = `(${seen}/${vis.length} watched)`;
+  document.getElementById('empty').hidden = VIDS.length > 0;
+}
+
+async function start() {
+  const [data, w] = await Promise.all([
+    fetch('data.json').then(r => r.json()),
+    fetch('api/watched').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  SERVER = !!w;
+  WATCHED = w || store('watched');
+
+  // Channels, most total views (of our videos) first.
+  const channels = [...Map.groupBy(data.videos, v => v.channelUrl || '').entries()]
+    .map(([url, list]) => ({ url, name: list[0].channel || 'Unknown', list, ...Object.fromEntries(['views', 'likes', 'comments'].map(k => [k, list.reduce((t, v) => t + (v.history?.at(-1)?.[k] || 0), 0)])) }))
+    .sort((a, b) => b.views - a.views || a.name.localeCompare(b.name));
+  const chan = channels.find(c => c.url && c.url === Q.get('channel'));
+  const listed = channels.filter(c => HIDDENTAB || !HID[c.url] || c === chan);
+  SHOWCHAN = !GROUP && !chan;
+
+  const [, val, dir] = SORTS[SORT];
+  const key = (v) => val(v) ?? (dir === 1 ? -Infinity : Infinity);
+  SCOPE = [...(chan ? chan.list : data.videos)].sort((a, b) => dir * (key(b) - key(a)) || 0);
+  VIDS = SCOPE.filter(v => HIDDENTAB ? off(v) : !off(v) && (SHOW === 'all' || (SHOW === 'watched') === !!WATCHED[v.id]));
+
+  // Header and controls
+  const f = document.querySelector('form');
+  f.show.value = SHOW;
+  f.sort.innerHTML = Object.entries(SORTS).map(([k, [label]]) => `<option value="${k}"${k === SORT ? ' selected' : ''}>${label}</option>`).join('');
+  f.channel.innerHTML = `<option value="">All channels (${listed.length})</option>` + listed.map(c =>
+    `<option value="${esc(c.url)}"${c === chan ? ' selected' : ''}>${esc(c.name)} (${num(c.views)} views, ${num(c.likes)} likes, ${num(c.comments)} comments)</option>`).join('');
+  f.group.value = GROUP ? 'channel' : 'none';
+  const i = listed.indexOf(chan), go = (d) => link({ channel: listed[i < 0 ? (d > 0 ? 0 : listed.length - 1) : (i + d + listed.length) % listed.length]?.url || '' });
+  document.getElementById('prev').href = go(-1); document.getElementById('next').href = go(1);
+  if (chan) document.getElementById('chan').innerHTML = `<span class="chan">${esc(chan.name)} <a class="btn yt" href="${esc(chan.url)}" target="_blank">YouTube ↗</a>
+    <span class="sub">${esc(chan.list[0].handle || '')} · ${num(chan.list[0].subscribers)} subs · ${i + 1} of ${listed.length}</span> ${hideBtn(chan.url, HID[chan.url])}</span>`;
+  const up = document.getElementById('updated');
+  up.title = data.updated ? `Stats updated ${day(data.updated)}. Hover a number to see its history.` : '';
+  up.innerHTML = (data.updated ? 'Updated ' + ago(data.updated) : 'No stats yet') + (SERVER ? ' <button id="ref" onclick="refreshStats()">Refresh stats</button>' : '');
+
+  build();
+  addEventListener('scroll', () => requestAnimationFrame(draw), { passive: true });
+  addEventListener('resize', build);
+}
+
+async function toggle(id) {
+  if (SERVER) {
+    const { watched } = await (await fetch('api/toggle/' + id, { method: 'POST' })).json();
+    if (watched) WATCHED[id] = true; else delete WATCHED[id];
+  } else {
+    if (WATCHED[id]) delete WATCHED[id]; else WATCHED[id] = true;
+    localStorage.setItem('watched', JSON.stringify(WATCHED));
+  }
+  drawn = ''; draw(); stats(); counts();
+}
+function removeVideo(id) {
+  if (REMOVED[id]) delete REMOVED[id]; else REMOVED[id] = true;
+  save();
+  VIDS.splice(VIDS.findIndex(v => v.id === id), 1); // gone from this view either way (removed, or put back from Hidden)
+  build();
+}
+function hideChannel(url) {
+  if (HID[url]) delete HID[url]; else HID[url] = true;
+  save();
+  location.href = link({ channel: '' });
+}
+async function refreshStats() {
+  const b = document.getElementById('ref');
+  b.disabled = true; b.textContent = 'Refreshing… (takes a while)';
+  await fetch('api/refresh', { method: 'POST' });
+  location.reload();
+}
+start();
+</script></body></html>

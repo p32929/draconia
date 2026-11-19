@@ -1,0 +1,6 @@
+server.log
+watched.json
+hidden.json
+removed.json
+.DS_Store
+proxies.txt

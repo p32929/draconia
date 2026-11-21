@@ -35,6 +35,9 @@
   .as { color: #666; } .err { color: #e57373; }
   button { flex: none; padding: .45rem .8rem; cursor: pointer; border-radius: 6px; border: 1px solid #555; background: #222; color: #ddd; }
   button.x { padding: .45rem .55rem; margin-left: -.4rem; color: #888; } button.x:hover { color: #e57373; border-color: #e57373; }
+  #hidlist { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-bottom: .6rem; padding: .5rem .6rem; border: 1px solid #333; border-radius: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .2rem .15rem .55rem; border: 1px solid #444; border-radius: 999px; font-size: 12px; }
+  .chip button { padding: .1rem .45rem; font-size: 11px; border-radius: 999px; }
   button.io { padding: .3rem .6rem; font-size: 12px; color: #aaa; }
   button.hide { padding: .1rem .45rem; font-size: 11px; margin-left: .4rem; color: #aaa; }
   .done > button { background: #2e7d32; color: #fff; border-color: #2e7d32; }
@@ -79,6 +82,7 @@
       <option value="none">No grouping</option><option value="channel">By channel</option></select></label>
   </form>
 </div>
+<div id="hidlist" hidden></div>
 <div id="list"><div class="skel"><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div></div></div><p class="sub" id="empty" hidden>Nothing here.</p>
 <script>
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -246,6 +250,14 @@ async function start() {
   up.title = data.updated ? `Stats updated ${day(data.updated)}. Hover a number to see its history.` : '';
   up.innerHTML = (data.updated ? 'Updated ' + ago(data.updated) : 'No stats yet') + (SERVER ? ' <button id="ref" onclick="refreshStats()">Refresh stats</button>' : '');
 
+  // Hidden tab: every hidden channel, with a button to unhide it.
+  if (HIDDENTAB) {
+    const hl = document.getElementById('hidlist'), hc = channels.filter(c => HID[c.url]);
+    hl.hidden = false;
+    hl.innerHTML = `<span class="sub">${hc.length ? `Hidden channels (${hc.length}):` : 'No hidden channels.'}</span>` + hc.map(c =>
+      `<span class="chip"><a href="${esc(chanHref(c.url))}">${esc(c.name)}</a> <span class="sub">${c.list.length}</span><button onclick="unhideChannel('${esc(c.url)}')">Unhide</button></span>`).join('')
+      + (hc.length > 1 ? ' <button class="io" onclick="unhideAll()">Unhide all</button>' : '');
+  }
   build();
   addEventListener('scroll', () => requestAnimationFrame(draw), { passive: true });
   addEventListener('resize', build);
@@ -287,6 +299,8 @@ function importHidden() {
   alert(`Imported. ${Object.keys(HID).length + Object.keys(REMOVED).length - before} new items hidden.`);
   location.reload();
 }
+function unhideChannel(url) { delete HID[url]; save(); location.reload(); }
+function unhideAll() { if (!confirm('Unhide all channels?')) return; for (const k in HID) delete HID[k]; save(); location.reload(); }
 function hideChannel(url) {
   if (HID[url]) delete HID[url]; else HID[url] = true;
   save();

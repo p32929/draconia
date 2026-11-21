@@ -16,7 +16,8 @@
   .btn { padding: .3rem .6rem; border: 1px solid #444; border-radius: 6px; background: #1b1b1b; } .btn:hover { text-decoration: none; background: #2a2a2a; }
   .yt { font-size: 12px; font-weight: normal; margin-left: .3rem; }
   .chan { font-size: 1rem; font-weight: 600; color: #fff; } .right { margin-left: auto; }
-  #chq { width: 300px; margin-left: .3rem; padding: .35rem .5rem; border-radius: 6px; border: 1px solid #444; background: #1b1b1b; color: #ddd; font: inherit; }
+  select[name=sort] { max-width: 150px; }
+  #chq { width: 250px; margin-left: .3rem; padding: .35rem .5rem; border-radius: 6px; border: 1px solid #444; background: #1b1b1b; color: #ddd; font: inherit; }
   select { margin-left: .3rem; padding: .35rem .5rem; border-radius: 6px; border: 1px solid #444; background: #1b1b1b; color: #ddd; font: inherit; }
   #list { position: relative; } .count { font-size: 13px; } .count b { color: #ddd; }
   .line { position: absolute; left: 0; right: 0; height: 96px; display: grid; column-gap: 1.5rem; }
@@ -36,9 +37,11 @@
   button { flex: none; padding: .45rem .8rem; cursor: pointer; border-radius: 6px; border: 1px solid #555; background: #222; color: #ddd; }
   button.x { padding: .45rem .55rem; margin-left: -.4rem; color: #888; } button.x:hover { color: #e57373; border-color: #e57373; }
   .s em.down { color: #e57373; }
+  #hidlist[hidden] { display: none; }
   #hidlist { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-bottom: .6rem; padding: .5rem .6rem; border: 1px solid #333; border-radius: 8px; }
   .chip { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .2rem .15rem .55rem; border: 1px solid #444; border-radius: 999px; font-size: 12px; }
   .chip button { padding: .1rem .45rem; font-size: 11px; border-radius: 999px; }
+  button.hidech { padding: .3rem .7rem; font-size: 12px; margin-left: .4rem; } button.hidech:hover { color: #e57373; border-color: #e57373; }
   button.io { padding: .3rem .6rem; font-size: 12px; color: #aaa; }
   button.hide { padding: .1rem .45rem; font-size: 11px; margin-left: .4rem; color: #aaa; }
   .done > button { background: #2e7d32; color: #fff; border-color: #2e7d32; }
@@ -65,9 +68,7 @@
   <h1><a href="./">Draconia</a> <small id="count"></small></h1>
   <span id="chan"></span>
   <span class="sub count" id="stats">Loading…</span>
-  <span class="right sub"><button class="io" onclick="exportHidden()" title="Copy your hidden channels and crossed-out videos, to import in another browser">Copy hidden</button>
-    <button class="io" onclick="importHidden()" title="Paste hidden channels and videos copied from another browser">Import hidden</button>
-    <span id="updated"></span></span>
+  <span class="right sub" id="updated"></span>
 </header>
 <div class="bar">
   <nav class="tabs" id="tabs"></nav>
@@ -82,6 +83,8 @@
     <label>Group<select name="group" onchange="this.form.submit()">
       <option value="none">No grouping</option><option value="channel">By channel</option></select></label>
   </form>
+  <span class="right"><button class="io" onclick="exportHidden()" title="Copy your hidden channels and crossed-out videos, to import in another browser">Copy hidden</button>
+    <button class="io" onclick="importHidden()" title="Paste hidden channels and videos copied from another browser">Import hidden</button></span>
 </div>
 <div id="hidlist" hidden></div>
 <div id="list"><div class="skel"><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div></div></div><p class="sub" id="empty" hidden>Nothing here.</p>
@@ -246,7 +249,7 @@ async function start() {
   const i = listed.indexOf(chan), go = (d) => link({ channel: listed[i < 0 ? (d > 0 ? 0 : listed.length - 1) : (i + d + listed.length) % listed.length]?.url || '' });
   document.getElementById('prev').href = go(-1); document.getElementById('next').href = go(1);
   if (chan) document.getElementById('chan').innerHTML = `<span class="chan">${esc(chan.name)} <a class="btn yt" href="${esc(chan.url)}" target="_blank">YouTube ↗</a>
-    <span class="sub">${esc(chan.list[0].handle || '')} · ${num(chan.list[0].subscribers)} subs · ${i + 1} of ${listed.length}</span> ${hideBtn(chan.url, HID[chan.url])}</span>`;
+    <span class="sub">${esc(chan.list[0].handle || '')} · ${num(chan.list[0].subscribers)} subs · ${i + 1} of ${listed.length}</span> <button class="hidech" onclick="hideChannel('${esc(chan.url)}')">${HID[chan.url] ? 'Unhide this channel' : '🚫 Hide this channel'}</button></span>`;
   const up = document.getElementById('updated');
   up.title = data.updated ? `Stats updated ${day(data.updated)}. Hover a number to see its history.` : '';
   up.innerHTML = (data.updated ? 'Updated ' + ago(data.updated) : 'No stats yet') + (SERVER ? ' <button id="ref" onclick="refreshStats()">Refresh stats</button>' : '');
@@ -305,7 +308,7 @@ function unhideAll() { if (!confirm('Unhide all channels?')) return; for (const 
 function hideChannel(url) {
   if (HID[url]) delete HID[url]; else HID[url] = true;
   save();
-  location.href = link({ channel: '' });
+  location.href = './'; // back to the home page
 }
 async function refreshStats() {
   const b = document.getElementById('ref');

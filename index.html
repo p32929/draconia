@@ -35,6 +35,7 @@
   .as { color: #666; } .err { color: #e57373; }
   button { flex: none; padding: .45rem .8rem; cursor: pointer; border-radius: 6px; border: 1px solid #555; background: #222; color: #ddd; }
   button.x { padding: .45rem .55rem; margin-left: -.4rem; color: #888; } button.x:hover { color: #e57373; border-color: #e57373; }
+  button.io { padding: .3rem .6rem; font-size: 12px; color: #aaa; }
   button.hide { padding: .1rem .45rem; font-size: 11px; margin-left: .4rem; color: #aaa; }
   .done > button { background: #2e7d32; color: #fff; border-color: #2e7d32; }
   /* Loading placeholder: grey rows with a light sweeping across, until the data arrives */
@@ -60,7 +61,9 @@
   <h1><a href="./">Draconia</a> <small id="count"></small></h1>
   <span id="chan"></span>
   <span class="sub count" id="stats">Loading…</span>
-  <span class="right sub" id="updated"></span>
+  <span class="right sub"><button class="io" onclick="exportHidden()" title="Copy your hidden channels and crossed-out videos, to import in another browser">Copy hidden</button>
+    <button class="io" onclick="importHidden()" title="Paste hidden channels and videos copied from another browser">Import hidden</button>
+    <span id="updated"></span></span>
 </header>
 <div class="bar">
   <nav class="tabs" id="tabs"></nav>
@@ -263,6 +266,26 @@ function removeVideo(id) {
   save();
   VIDS.splice(VIDS.findIndex(v => v.id === id), 1); // gone from this view either way (removed, or put back from Hidden)
   build();
+}
+// Move hidden channels and crossed-out videos between browsers as one line of text.
+const CH = 'https://www.youtube.com/channel/';
+async function exportHidden() {
+  const code = JSON.stringify({ c: Object.keys(HID).map(u => u.replace(CH, '')), v: Object.keys(REMOVED) });
+  try { await navigator.clipboard.writeText(code); alert(`Copied ${Object.keys(HID).length} hidden channels and ${Object.keys(REMOVED).length} crossed-out videos.\nOpen the site anywhere, press "Import hidden" and paste.`); }
+  catch { prompt('Copy this text:', code); }
+}
+function importHidden() {
+  const text = prompt('Paste the text you copied with "Copy hidden":');
+  if (!text) return;
+  let x;
+  try { x = JSON.parse(text); if (!Array.isArray(x.c) || !Array.isArray(x.v)) throw 0; }
+  catch { return alert('That text is not from "Copy hidden".'); }
+  const before = Object.keys(HID).length + Object.keys(REMOVED).length;
+  for (const c of x.c) HID[String(c).startsWith('http') ? c : CH + c] = true; // added to what this browser already hides
+  for (const v of x.v) REMOVED[v] = true;
+  save();
+  alert(`Imported. ${Object.keys(HID).length + Object.keys(REMOVED).length - before} new items hidden.`);
+  location.reload();
 }
 function hideChannel(url) {
   if (HID[url]) delete HID[url]; else HID[url] = true;

@@ -37,6 +37,14 @@
   button.x { padding: .45rem .55rem; margin-left: -.4rem; color: #888; } button.x:hover { color: #e57373; border-color: #e57373; }
   button.hide { padding: .1rem .45rem; font-size: 11px; margin-left: .4rem; color: #aaa; }
   .done > button { background: #2e7d32; color: #fff; border-color: #2e7d32; }
+  /* Loading placeholder: grey rows with a light sweeping across, until the data arrives */
+  .skel { display: grid; grid-template-columns: 1fr; column-gap: 1.5rem; }
+  @media (min-width: 1100px) { .skel { grid-template-columns: 1fr 1fr; } }
+  .skel .row > * { border-radius: 6px; background: linear-gradient(90deg, #1c1c1c 25%, #2a2a2a 50%, #1c1c1c 75%) 0 0 / 200% 100%; animation: shimmer 1.4s linear infinite; }
+  .skel .th { width: 144px; height: 81px; } .skel .info { height: 54px; } .skel .btn1 { width: 110px; height: 34px; } .skel .btn2 { width: 34px; height: 34px; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .skel .row > * { animation: none; } }
+  @media (max-width: 600px) { .skel .th { width: 104px; height: 58px; } .skel .btn1 { width: 62px; } }
   @media (max-width: 600px) { /* phones: smaller thumbnail and buttons so the title still fits */
     body { padding: 0 .5rem; }
     .n { display: none; }
@@ -68,7 +76,7 @@
       <option value="none">No grouping</option><option value="channel">By channel</option></select></label>
   </form>
 </div>
-<div id="list"></div><p class="sub" id="empty" hidden>Nothing here.</p>
+<div id="list"><div class="skel"><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div><div class="row"><span class="th"></span><span class="info"></span><span class="btn1"></span><span class="btn2"></span></div></div></div><p class="sub" id="empty" hidden>Nothing here.</p>
 <script>
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = (n) => n == null ? '–' : Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
